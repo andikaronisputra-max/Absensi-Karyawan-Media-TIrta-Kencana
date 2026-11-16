@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Absensi Karyawan</title>
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#16302b;--muted:#5d716c;--line:#d5dedb;--main:#0f6b5c;--main-ink:#fff;--warn:#b86e00;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#101a18;--card:#18262330;--ink:#e6f0ed;--muted:#9bb0aa;--line:#2a3d39;--main:#3fb8a2;--main-ink:#06201b;--warn:#f0a53a;--bad:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:8px 0 2px}
+.sub{color:var(--muted);margin:0 0 20px}
+#clock{font-size:2.4rem;font-weight:700;letter-spacing:.02em}
+nav{display:flex;gap:4px;margin:16px 0;border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;padding:10px 16px;font:inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent}
+nav button[aria-selected=true]{color:var(--main);border-color:var(--main);font-weight:600}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+label{display:block;font-weight:600;margin:14px 0 6px}
+input,select,textarea{width:100%;padding:11px 12px;font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px}
+:focus-visible{outline:3px solid var(--main);outline-offset:1px}
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.types input{position:absolute;opacity:0}
+.types label{margin:0;text-align:center;padding:12px 6px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:500}
+.types input:checked+label{background:var(--main);color:var(--main-ink);border-color:var(--main)}
+.types input:focus-visible+label{outline:3px solid var(--main);outline-offset:2px}
+.send{margin-top:20px;width:100%;padding:13px;border:0;border-radius:8px;background:var(--main);color:var(--main-ink);font:inherit;font-weight:700;cursor:pointer}
+.send:disabled{opacity:.6;cursor:wait}
+.msg{margin-top:14px;padding:10px 12px;border-radius:8px;display:none}
+.msg.ok{display:block;background:#0f6b5c22;color:var(--main)}
+.msg.err{display:block;background:#b3261e22;color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px}
+.stat b{display:block;font-size:1.6rem}
+.stat span{color:var(--muted);font-size:.85rem}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600}
+.empty{color:var(--muted);padding:12px 0}
+[hidden]{display:none!important}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Absensi Karyawan</h1>
+  <p class="sub" id="today"></p>
+  <div id="clock" aria-live="off">--:--:--</div>
+
+  <nav role="tablist">
+    <button role="tab" id="t1" aria-selected="true" aria-controls="p1">Isi absensi</button>
+    <button role="tab" id="t2" aria-selected="false" aria-controls="p2">Dashboard</button>
+  </nav>
+
+  <section class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+    <div>
+      <label for="nama">Nama</label>
+      <input id="nama" autocomplete="name" placeholder="Nama lengkap" required>
+
+      <label id="jl">Jenis absensi</label>
+      <div class="types" role="radiogroup" aria-labelledby="jl">
+        <span><input type="radio" name="jenis" id="j1" value="Masuk" checked><label for="j1">Absen masuk</label></span>
+        <span><input type="radio" name="jenis" id="j2" value="Pulang"><label for="j2">Absen pulang</label></span>
+        <span><input type="radio" name="jenis" id="j3" value="Izin"><label for="j3">Izin</label></span>
+      </div>
+
+      <div id="izinBox" hidden>
+        <label for="alasan">Alasan izin</label>
+        <select id="alasan"><option>Sakit</option><option>Lainnya</option></select>
+        <label for="ket">Keterangan</label>
+        <textarea id="ket" rows="2" placeholder="Contoh: demam, periksa ke dokter"></textarea>
+      </div>
+
+      <button class="send" id="kirim">Kirim absensi</button>
+      <div class="msg" id="msg" role="status"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+    <div class="stats">
+      <div class="stat"><b id="sMasuk">0</b><span>Masuk hari ini</span></div>
+      <div class="stat"><b id="sPulang">0</b><span>Pulang hari ini</span></div>
+      <div class="stat"><b id="sSakit">0</b><span>Izin sakit</span></div>
+      <div class="stat"><b id="sLain">0</b><span>Izin lainnya</span></div>
+    </div>
+    <div class="wrap">
+      <table>
+        <thead><tr><th>Waktu</th><th>Nama</th><th>Jenis</th><th>Alasan</th><th>Keterangan</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty">Memuat data…</div>
+  </section>
+</main>
+
+<script>
+// Tempel URL Web App dari Google Apps Script di sini (lihat petunjuk)
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLlpKAHQQsnukU1yUhJ8lX8R6pUaTTKqbhkm5B9fIFK1Wmh2tOFhleSiNswYTYaEWjsQ/exec";
+
+const $ = id => document.getElementById(id);
+const hari = new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+$("today").textContent = hari;
+setInterval(()=>{$("clock").textContent=new Date().toLocaleTimeString("id-ID",{hour12:false}).replace(/\./g,":")},1000);
+
+// Tab
+[["t1","p1"],["t2","p2"]].forEach(([t,p])=>{
+  $(t).onclick=()=>{
+    ["t1","t2"].forEach(x=>$(x).setAttribute("aria-selected",x===t));
+    $("p1").hidden=p!=="p1"; $("p2").hidden=p!=="p2";
+    if(p==="p2") loadDash();
+  };
+});
+
+// Tampilkan kolom izin
+document.querySelectorAll('input[name=jenis]').forEach(r=>{
+  r.onchange=()=>{ $("izinBox").hidden = document.querySelector('input[name=jenis]:checked').value!=="Izin"; };
+});
+
+function show(text,type){const m=$("msg");m.textContent=text;m.className="msg "+type;}
+
+$("kirim").onclick = async () => {
+  const nama = $("nama").value.trim();
+  const jenis = document.querySelector('input[name=jenis]:checked').value;
+  if(!nama){ show("Isi nama dulu.","err"); $("nama").focus(); return; }
+  if(SCRIPT_URL.startsWith("GANTI")){ show("URL Google Apps Script belum diisi di file index.html.","err"); return; }
+  const data = { nama, jenis, alasan: jenis==="Izin" ? $("alasan").value : "", keterangan: jenis==="Izin" ? $("ket").value.trim() : "" };
+  const btn=$("kirim"); btn.disabled=true; btn.textContent="Mengirim…";
+  try{
+    await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data)});
+    show("Absensi terkirim atas nama "+nama+".","ok");
+    $("ket").value="";
+  }catch(e){ show("Gagal mengirim. Periksa koneksi internet lalu coba lagi.","err"); }
+  btn.disabled=false; btn.textContent="Kirim absensi";
+};
+
+async function loadDash(){
+  $("empty").textContent="Memuat data…"; $("empty").hidden=false;
+  if(SCRIPT_URL.startsWith("GANTI")){ $("empty").textContent="URL Google Apps Script belum diisi."; return; }
+  try{
+    const res = await fetch(SCRIPT_URL); const list = await res.json();
+    const tgl = new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Jakarta"});
+    const hariIni = list.filter(r=>r.tanggal===tgl);
+    $("sMasuk").textContent = hariIni.filter(r=>r.jenis==="Masuk").length;
+    $("sPulang").textContent = hariIni.filter(r=>r.jenis==="Pulang").length;
+    $("sSakit").textContent = hariIni.filter(r=>r.jenis==="Izin"&&r.alasan==="Sakit").length;
+    $("sLain").textContent = hariIni.filter(r=>r.jenis==="Izin"&&r.alasan==="Lainnya").length;
+    const tb=$("rows"); tb.innerHTML="";
+    list.slice(0,50).forEach(r=>{
+      const tr=document.createElement("tr");
+      [r.tanggal+" "+r.jam, r.nama, r.jenis, r.alasan||"-", r.keterangan||"-"].forEach(v=>{
+        const td=document.createElement("td"); td.textContent=v; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    $("empty").hidden = list.length>0; $("empty").textContent="Belum ada data absensi.";
+  }catch(e){ $("empty").textContent="Gagal memuat data dashboard."; }
+}
+</script>
+</body>
+</html>
